@@ -5,11 +5,11 @@ API for CTS/CITE returns URNs and Nodes in JSON format
 1. Download the zipped Repo
 2. Unpack it (You can rename it afterwards if you like)
 3. Open a Terminal/Commandline and cd into the unpacked (and optionally renamed) folder
-4. On Mac/Linux: start it up with `./UnixCTS` 
+4. On Mac/Linux: start it up with `./Textservice` 
 
 ## Trouble-shooting
 
-You might have to tell your Operating system that `./UnixCTS` is an executable with `chmod +x UnixCTS`
+You might have to tell your Operating system that `./Textservice` is an executable with `chmod +x Textservice`
 
 ## Try it with your favourite browser
 
