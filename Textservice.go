@@ -29,7 +29,7 @@ type ServerConfig struct {
 }
 
 type CTSParams struct {
-	Sourcetext, StartID, EndID string
+	Sourcetext, Filter string
 }
 
 func LoadConfiguration(file string) ServerConfig {
@@ -70,10 +70,26 @@ func ReturnURNS(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, result)
 }
 
+func ReturnSpecURNS(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+  filter := vars["filter"]
+	sourcetext := strings.Join([]string{vars["source"], "cex"}, ".")
+	result := ParseURNS(CTSParams{Sourcetext: sourcetext, Filter: filter})
+	fmt.Fprintln(w, result)
+}
+
 func ReturnNodes(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	sourcetext := strings.Join([]string{vars["source"], "cex"}, ".")
 	result := ParseNodes(CTSParams{Sourcetext: sourcetext})
+	fmt.Fprintln(w, result)
+}
+
+func ReturnSpecNodes(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+  filter := vars["filter"]
+	sourcetext := strings.Join([]string{vars["source"], "cex"}, ".")
+	result := ParseNodes(CTSParams{Sourcetext: sourcetext, Filter: filter})
 	fmt.Fprintln(w, result)
 }
 
@@ -98,19 +114,37 @@ func ParseURNS(p CTSParams) string {
 	reader.FieldsPerRecord = 2
 
 	var index []Index
-	for {
-		line, error := reader.Read()
-		if error == io.EOF {
-			break
-		} else if error != nil {
-			log.Fatal(error)
-		}
-		index = append(index, Index{
-			Urn: line[0],
-		})
-	}
+
+  switch {
+  case p.Filter != "":
+    for {
+  		line, error := reader.Read()
+  		if error == io.EOF {
+  			break
+  		} else if error != nil {
+  			log.Fatal(error)
+  		}
+      if strings.Contains(line[0], p.Filter) {
+        index = append(index, Index{
+    			Urn: line[0],
+    		})
+    }
+  	}
+  default:
+    for {
+  		line, error := reader.Read()
+  		if error == io.EOF {
+  			break
+  		} else if error != nil {
+  			log.Fatal(error)
+  		}
+      index = append(index, Index{
+  			Urn: line[0],
+  		})
+  	}
+  }
 	indexJson, _ := json.Marshal(index)
-	return string(indexJson)
+  return string(indexJson)
 }
 
 func ParseNodes(p CTSParams) string {
@@ -133,20 +167,39 @@ func ParseNodes(p CTSParams) string {
 	reader.FieldsPerRecord = 2
 
 	var index []Node
-	for {
-		line, error := reader.Read()
-		if error == io.EOF {
-			break
-		} else if error != nil {
-			log.Fatal(error)
-		}
-		index = append(index, Node{
-			ID:   line[0],
-			Text: line[1],
-		})
-	}
-	indexJson, _ := json.Marshal(index)
-	return string(indexJson)
+
+  switch {
+  case p.Filter != "":
+    for {
+  		line, error := reader.Read()
+  		if error == io.EOF {
+  			break
+  		} else if error != nil {
+  			log.Fatal(error)
+  		}
+      if strings.Contains(line[0], p.Filter) {
+        index = append(index, Node{
+    			ID:   line[0],
+    			Text: line[1],
+  		})
+    }
+  	}
+  default:
+    for {
+  		line, error := reader.Read()
+  		if error == io.EOF {
+  			break
+  		} else if error != nil {
+  			log.Fatal(error)
+  		}
+  		index = append(index, Node{
+  			ID:   line[0],
+  			Text: line[1],
+  		})
+  	}
+  }
+  indexJson, _ := json.Marshal(index)
+  return string(indexJson)
 }
 
 func main() {
@@ -156,7 +209,9 @@ func main() {
 	s := http.StripPrefix("/static/", http.FileServer(http.Dir("./static/")))
 	router.PathPrefix("/static/").Handler(s)
 	router.HandleFunc("/cex/{source}/urns", ReturnURNS)
+  router.HandleFunc("/cex/{source}/urns/{filter}", ReturnSpecURNS)
 	router.HandleFunc("/cex/{source}/nodes", ReturnNodes)
+  router.HandleFunc("/cex/{source}/nodes/{filter}", ReturnSpecNodes)
 	router.HandleFunc("/", TestIndex)
 	log.Println("Listening at" + serverIP + "...")
 	log.Fatal(http.ListenAndServe(serverIP, router))
